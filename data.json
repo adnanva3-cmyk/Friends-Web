@@ -1,0 +1,97 @@
+{
+  "home": {
+    "heroTitle": "",
+    "heroSubtitle": "",
+    "heroGradientStrength": 0,
+    "heroImage": "/uploads/1774170134808-179761586.png",
+    "heroOpacity": 1
+  },
+  "products": [
+    {
+      "name": "RAJAGIRI",
+      "description": "Tickness : 60",
+      "image": "/uploads/1774168219132-284001586.png",
+      "category": "InterLocks",
+      "price": "60",
+      "id": "1774168219126"
+    },
+    {
+      "name": "Cuble stone",
+      "description": "",
+      "image": "/uploads/1774171365961-738275528.png",
+      "bgImage": "/uploads/1774171366334-150890776.webp",
+      "category": "",
+      "price": "165",
+      "id": "1774171366324"
+    }
+  ],
+  "contact": {
+    "phone": "+91 9605800112",
+    "email": "friendshollowbricks@gmail.com",
+    "address": "121/A, Groundfloor, Friends Hollow Bricks And Interlocks, Narikkuni - Palangad Road, Narikkuni, Kozhikode, 673585, Kerala, India",
+    "whatsapp": "+91 9605800112",
+    "secondaryPhone": "+91 7907727255",
+    "branches": [
+      {
+        "name": "Main Branch",
+        "address": "121/A, Groundfloor, Friends Hollow Bricks And Interlocks, Narikkuni - Palangad Road, Narikkuni, Kozhikode, 673585, Kerala, India",
+        "mapEmbed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d977.8458380352358!2d75.86388360604744!3d11.37967832514358!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba667cca92506bd%3A0xfeaaa668143354d5!2sFriends%20hollow%20bricks%20and%20inter%20Locke!5e0!3m2!1sen!2sin!4v1774172490444!5m2!1sen!2sin",
+        "mapLink": ""
+      }
+    ]
+  },
+  "slides": [
+    {
+      "title": "Paving",
+      "subtitle": "Call Us",
+      "description": "Experts making the paving more iconic ",
+      "image": "/uploads/1774170301501-654113127.jpg",
+      "layout": "overlay",
+      "type": "general",
+      "shape": "rectangle",
+      "rounded": "none",
+      "fit": "full",
+      "align": "center",
+      "id": "1774170301538"
+    },
+    {
+      "title": "New Model",
+      "subtitle": "RajaGiri",
+      "description": "Look so Marvellous ",
+      "image": "/uploads/1774170384421-91520327.jpeg",
+      "layout": "overlay",
+      "type": "general",
+      "shape": "rectangle",
+      "rounded": "none",
+      "fit": "contained",
+      "align": "center",
+      "id": "1774170384421"
+    },
+    {
+      "title": "nill",
+      "subtitle": "nilll",
+      "description": "",
+      "image": "/uploads/1774170750753-788397422.png",
+      "layout": "overlay",
+      "type": "general",
+      "shape": "square",
+      "rounded": "full",
+      "fit": "contained",
+      "align": "left",
+      "id": "1774170750778"
+    },
+    {
+      "title": "NEW",
+      "subtitle": "",
+      "description": "",
+      "image": "/uploads/1774170858240-817261359.png",
+      "layout": "overlay",
+      "type": "trending",
+      "shape": "square",
+      "rounded": "medium",
+      "fit": "full",
+      "align": "right",
+      "id": "1774170858263"
+    }
+  ]
+}
