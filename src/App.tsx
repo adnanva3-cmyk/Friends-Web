@@ -21,7 +21,14 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/data')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Server returned ' + res.status);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.contact) {
           setContactData(data.contact);
@@ -56,11 +63,16 @@ export default function App() {
               className="cursor-pointer text-left inline-flex flex-col"
               onClick={() => setActiveTab('Home')}
             >
-              <h1 className="font-display font-black text-5xl md:text-7xl leading-[0.8] tracking-[0.02em] flex justify-between w-full">
-                <span className="text-[#8B0000]">FRIEND</span>
+              <h1 className="font-display font-black text-5xl md:text-7xl leading-[0.8] flex justify-between w-full">
+                <span className="text-[#8B0000]">F</span>
+                <span className="text-[#8B0000]">R</span>
+                <span className="text-[#8B0000]">I</span>
+                <span className="text-[#8B0000]">E</span>
+                <span className="text-[#8B0000]">N</span>
+                <span className="text-[#8B0000]">D</span>
                 <span className="text-black">S</span>
               </h1>
-              <div className="mt-1 bg-black text-white px-2 py-1 text-[11px] md:text-[14px] font-black uppercase tracking-[0.2em] text-center whitespace-nowrap">
+              <div className="mt-1 bg-black text-white px-3 py-1 text-[10px] md:text-[13px] font-black uppercase tracking-[0.2em] text-center whitespace-nowrap">
                 HOLLOW BRICKS & INTERLOCKS
               </div>
             </motion.div>

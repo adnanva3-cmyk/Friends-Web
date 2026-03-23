@@ -9,6 +9,11 @@ export default function Products() {
     const fetchProducts = async () => {
       try {
         const res = await fetch('/api/data');
+        if (!res.ok) throw new Error('Server returned ' + res.status);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
         const data = await res.json();
         setProducts(data.products || []);
       } catch (err) {

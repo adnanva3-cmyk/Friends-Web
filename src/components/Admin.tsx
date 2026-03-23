@@ -71,6 +71,11 @@ export default function Admin() {
   const fetchData = async () => {
     try {
       const res = await fetch('/api/data');
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Response is not JSON");
+      }
       const data = await res.json();
       
       // Ensure data structure is complete
@@ -145,6 +150,11 @@ export default function Admin() {
           method: 'POST',
           body: formData
         });
+        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
+        const contentType = uploadRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
         const uploadData = await uploadRes.json();
         updatedData.home.heroImage = uploadData.imageUrl;
       }
@@ -217,6 +227,11 @@ export default function Admin() {
           method: 'POST',
           body: formData
         });
+        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
+        const contentType = uploadRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
         const uploadData = await uploadRes.json();
         imageUrl = uploadData.imageUrl;
       }
@@ -286,6 +301,11 @@ export default function Admin() {
           method: 'POST',
           body: formData
         });
+        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
+        const contentType = uploadRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
         const uploadData = await uploadRes.json();
         imageUrl = uploadData.imageUrl;
       }
@@ -298,6 +318,11 @@ export default function Admin() {
           method: 'POST',
           body: formData
         });
+        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
+        const contentType = uploadRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Response is not JSON");
+        }
         const uploadData = await uploadRes.json();
         bgImageUrl = uploadData.imageUrl;
       }
