@@ -6,10 +6,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone } from 'lucide-react';
+import { INITIAL_DATA } from './constants/initialData';
 import Home from './components/Home';
 import Products from './components/Products';
 import Contact from './components/Contact';
 import Admin from './components/Admin';
+import { db } from './firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 type Tab = 'Home' | 'Products' | 'Contacts Us' | 'Admin';
 
@@ -17,24 +20,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Home');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [contactData, setContactData] = useState<any>(null);
+  const [contactData, setContactData] = useState<any>(INITIAL_DATA.contact);
 
   useEffect(() => {
-    fetch('/api/data')
-      .then(res => {
-        if (!res.ok) throw new Error('Server returned ' + res.status);
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (data.contact) {
-          setContactData(data.contact);
-        }
-      })
-      .catch(err => console.error("Error fetching contact data:", err));
+    const unsub = onSnapshot(doc(db, 'settings', 'contact'), (docSnap) => {
+      if (docSnap.exists()) {
+        setContactData(docSnap.data());
+      }
+    }, (error) => {
+      console.error("Error fetching contact data from Firestore:", error);
+    });
+    return () => unsub();
   }, []);
 
   const handleHiddenLogin = () => {

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, MotionValue, useMotionValue } from 'motion/react';
 import { useRef } from 'react';
+import { INITIAL_DATA } from '../constants/initialData';
+import { db } from '../firebase';
+import { doc, collection, onSnapshot } from 'firebase/firestore';
 
 interface SlideCardProps {
   key?: React.Key;
@@ -178,16 +181,10 @@ export default function Home() {
     offset: ["start start", "end end"]
   });
 
-  const [homeContent, setHomeContent] = useState({
-    heroTitle: 'Building Foundations that Last Generations',
-    heroSubtitle: 'Engineering the Future',
-    heroGradientStrength: 60,
-    heroImage: '',
-    heroOpacity: 0.4
-  });
+  const [homeContent, setHomeContent] = useState(INITIAL_DATA.home);
 
   // Dynamic Opacity Hook
-  const opacitySetting = useMotionValue(0.4);
+  const opacitySetting = useMotionValue(INITIAL_DATA.home.heroOpacity);
   useEffect(() => {
     opacitySetting.set(homeContent.heroOpacity ?? 0.4);
   }, [homeContent.heroOpacity]);
@@ -212,25 +209,30 @@ export default function Home() {
   const indicatorPointerEvents = useTransform(scrollYProgress, [0, 0.04], ["auto" as any, "none" as any]);
   const indicatorVisibility = useTransform(scrollYProgress, [0, 0.04], ["visible" as any, "hidden" as any]);
 
-  const [slides, setSlides] = useState<any[]>([]);
+  const [slides, setSlides] = useState<any[]>(INITIAL_DATA.slides);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/data');
-        if (!res.ok) throw new Error('Server returned ' + res.status);
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const data = await res.json();
-        if (data.home) setHomeContent(data.home);
-        setSlides(data.slides || []);
-      } catch (err) {
-        console.error("Error fetching data:", err);
+    const unsubHome = onSnapshot(doc(db, 'settings', 'home'), (docSnap) => {
+      if (docSnap.exists()) {
+        setHomeContent(docSnap.data() as any);
       }
+    }, (error) => {
+      console.error("Error fetching home data from Firestore:", error);
+    });
+
+    const unsubSlides = onSnapshot(collection(db, 'slides'), (snapshot) => {
+      if (!snapshot.empty) {
+        const slidesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSlides(slidesData);
+      }
+    }, (error) => {
+      console.error("Error fetching slides from Firestore:", error);
+    });
+
+    return () => {
+      unsubHome();
+      unsubSlides();
     };
-    fetchData();
   }, []);
 
   return (

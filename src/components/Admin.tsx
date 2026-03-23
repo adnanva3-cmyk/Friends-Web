@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trash2, Plus, Save, LogOut, Settings, Package, Phone, Upload, Loader2 } from 'lucide-react';
+import { INITIAL_DATA } from '../constants/initialData';
+import { db, auth } from '../firebase';
+import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
 
 export default function Admin() {
   const [isLocalAdmin, setIsLocalAdmin] = useState(() => {
@@ -11,7 +24,7 @@ export default function Admin() {
   const [activeSubTab, setActiveSubTab] = useState<'home' | 'slides' | 'products' | 'contact'>('home');
 
   // Full Data State
-  const [allData, setAllData] = useState<any>(null);
+  const [allData, setAllData] = useState<any>(INITIAL_DATA);
 
   // Products State
   const [newProduct, setNewProduct] = useState({
@@ -56,35 +69,35 @@ export default function Admin() {
   const categories = allData?.products ? Array.from(new Set(allData.products.map((p: any) => p.category).filter(Boolean))) : ['HOLLOW BRICKS', 'INTERLOCK'];
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isLocalAdmin) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, [isLocalAdmin]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLocalAdmin(true);
+        sessionStorage.setItem('admin_session', 'true');
+        fetchData();
+      } else {
+        setIsLocalAdmin(false);
+        sessionStorage.removeItem('admin_session');
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data');
-      if (!res.ok) throw new Error('Server returned ' + res.status);
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Response is not JSON");
-      }
-      const data = await res.json();
-      
-      // Ensure data structure is complete
+      const homeSnap = await getDoc(doc(db, 'settings', 'home'));
+      const contactSnap = await getDoc(doc(db, 'settings', 'contact'));
+      const productsSnap = await getDocs(collection(db, 'products'));
+      const slidesSnap = await getDocs(collection(db, 'slides'));
+
       const sanitizedData = {
-        ...data,
-        home: data.home || { heroTitle: '', heroSubtitle: '', heroGradientStrength: 60, heroImage: '', heroOpacity: 0.4 },
-        products: data.products || [],
-        slides: data.slides || [],
-        contact: data.contact || { phone: '', secondaryPhone: '', email: '', whatsapp: '', branches: [] }
+        home: homeSnap.exists() ? homeSnap.data() : INITIAL_DATA.home,
+        contact: contactSnap.exists() ? contactSnap.data() : INITIAL_DATA.contact,
+        products: productsSnap.empty ? INITIAL_DATA.products : productsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        slides: slidesSnap.empty ? INITIAL_DATA.slides : slidesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
       };
       
       if (sanitizedData.contact && !sanitizedData.contact.branches) {
@@ -94,7 +107,7 @@ export default function Admin() {
       setAllData(sanitizedData);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error fetching data from Firestore:", err);
       setLoading(false);
     }
   };
@@ -102,33 +115,50 @@ export default function Admin() {
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (username === 'IZA' && password === 'Iza@123') {
-      setIsLocalAdmin(true);
-      sessionStorage.setItem('admin_session', 'true');
-    } else {
-      setError('Invalid username or password.');
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in.');
     }
   };
 
-  const logout = () => {
-    setIsLocalAdmin(false);
-    sessionStorage.removeItem('admin_session');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Error signing out:", err);
+    }
   };
 
   const saveData = async (updatedData: any) => {
     try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData)
+      const batch = writeBatch(db);
+      
+      batch.set(doc(db, 'settings', 'home'), updatedData.home);
+      batch.set(doc(db, 'settings', 'contact'), updatedData.contact);
+      
+      const productsSnap = await getDocs(collection(db, 'products'));
+      productsSnap.forEach(doc => batch.delete(doc.ref));
+      
+      updatedData.products.forEach((p: any) => {
+        const docRef = doc(collection(db, 'products'), p.id || Date.now().toString() + Math.random());
+        batch.set(docRef, p);
       });
-      if (res.ok) {
-        setAllData(updatedData);
-        return true;
-      }
+      
+      const slidesSnap = await getDocs(collection(db, 'slides'));
+      slidesSnap.forEach(doc => batch.delete(doc.ref));
+      
+      updatedData.slides.forEach((s: any) => {
+        const docRef = doc(collection(db, 'slides'), s.id || Date.now().toString() + Math.random());
+        batch.set(docRef, s);
+      });
+      
+      await batch.commit();
+      setAllData(updatedData);
+      return true;
     } catch (err) {
-      console.error("Error saving data:", err);
+      console.error("Error saving data to Firestore:", err);
     }
     return false;
   };
@@ -144,19 +174,8 @@ export default function Admin() {
       let updatedData = { ...allData };
       
       if (heroFile) {
-        const formData = new FormData();
-        formData.append('image', heroFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
-        const contentType = uploadRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const uploadData = await uploadRes.json();
-        updatedData.home.heroImage = uploadData.imageUrl;
+        const base64Image = await fileToBase64(heroFile);
+        updatedData.home.heroImage = base64Image;
       }
 
       const success = await saveData(updatedData);
@@ -221,19 +240,7 @@ export default function Admin() {
       let imageUrl = newSlide.image;
 
       if (slideFile) {
-        const formData = new FormData();
-        formData.append('image', slideFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
-        const contentType = uploadRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.imageUrl;
+        imageUrl = await fileToBase64(slideFile);
       }
 
       const updatedSlides = [
@@ -295,36 +302,12 @@ export default function Admin() {
 
       // Upload Product Photo
       if (productFile) {
-        const formData = new FormData();
-        formData.append('image', productFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
-        const contentType = uploadRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.imageUrl;
+        imageUrl = await fileToBase64(productFile);
       }
 
       // Upload Background Image
       if (bgFile) {
-        const formData = new FormData();
-        formData.append('image', bgFile);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (!uploadRes.ok) throw new Error('Upload failed with status ' + uploadRes.status);
-        const contentType = uploadRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const uploadData = await uploadRes.json();
-        bgImageUrl = uploadData.imageUrl;
+        bgImageUrl = await fileToBase64(bgFile);
       }
 
       const updatedProducts = [
@@ -370,39 +353,26 @@ export default function Admin() {
   if (!isLocalAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-neutral-100 shadow-sm">
-          <h2 className="text-2xl font-bold mb-6 text-center">Admin Access</h2>
-          <form onSubmit={login} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Username</label>
-              <input 
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                placeholder="Enter username"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Password</label>
-              <input 
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                placeholder="Enter password"
-                required
-              />
-            </div>
-            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
-            <button 
-              type="submit"
-              className="w-full bg-red-700 text-white py-4 rounded-xl font-bold hover:bg-red-800 transition-all shadow-lg shadow-red-700/20"
-            >
-              Login
-            </button>
-          </form>
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-neutral-100 shadow-sm text-center">
+          <h2 className="text-2xl font-bold mb-6">Admin Access</h2>
+          <p className="text-neutral-500 mb-8">Sign in with your Google account to manage the website content.</p>
+          
+          {error && <p className="text-red-600 text-sm font-bold mb-4">{error}</p>}
+          
+          <button 
+            onClick={login}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-neutral-200 text-neutral-700 py-4 rounded-xl font-bold hover:bg-neutral-50 transition-all shadow-sm"
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
+                <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
+                <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
+                <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
+              </g>
+            </svg>
+            Sign in with Google
+          </button>
         </div>
       </div>
     );

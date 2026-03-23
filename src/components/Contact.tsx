@@ -1,54 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Phone, MapPin, Send, Clock, ExternalLink, MessageCircle } from 'lucide-react';
+import { INITIAL_DATA } from '../constants/initialData';
+import { db } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function Contact() {
-  const [contactInfo, setContactInfo] = useState({
-    phone: '+91 98765 43210',
-    secondaryPhone: '+91 88765 43210',
-    email: 'info@friendsbricks.com',
-    whatsapp: '+91 98765 43210',
-    branches: [
-      {
-        name: 'Main Branch',
-        address: 'Industrial Area, Phase II, Palakkad, Kerala - 678001',
-        mapEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d977.8458380352358!2d75.86388360604744!3d11.37967832514358!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba667cca92506bd%3A0xfeaaa668143354d5!2sFriends%20hollow%20bricks%20and%20inter%20Locke!5e0!3m2!1sen!2sin!4v1774172490444!5m2!1sen!2sin',
-        mapLink: ''
-      }
-    ]
-  });
+  const [contactInfo, setContactInfo] = useState(INITIAL_DATA.contact);
 
   useEffect(() => {
-    const fetchContact = async () => {
-      try {
-        const res = await fetch('/api/data');
-        if (!res.ok) throw new Error('Server returned ' + res.status);
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const data = await res.json();
-        if (data.contact) {
-          // Migration for old data structure
-          const branches = data.contact.branches || [{
-            name: 'Main Branch',
-            address: data.contact.address || '',
-            mapEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d977.8458380352358!2d75.86388360604744!3d11.37967832514358!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba667cca92506bd%3A0xfeaaa668143354d5!2sFriends%20hollow%20bricks%20and%20inter%20Locke!5e0!3m2!1sen!2sin!4v1774172490444!5m2!1sen!2sin',
-            mapLink: ''
-          }];
-          setContactInfo({ 
-            phone: data.contact.phone || '',
-            secondaryPhone: data.contact.secondaryPhone || '',
-            email: data.contact.email || '',
-            whatsapp: data.contact.whatsapp || '',
-            branches 
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
+    const unsub = onSnapshot(doc(db, 'settings', 'contact'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const branches = data.branches || [{
+          name: 'Main Branch',
+          address: data.address || '',
+          mapEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d977.8458380352358!2d75.86388360604744!3d11.37967832514358!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba667cca92506bd%3A0xfeaaa668143354d5!2sFriends%20hollow%20bricks%20and%20inter%20Locke!5e0!3m2!1sen!2sin!4v1774172490444!5m2!1sen!2sin',
+          mapLink: ''
+        }];
+        setContactInfo({ 
+          phone: data.phone || '',
+          secondaryPhone: data.secondaryPhone || '',
+          email: data.email || '',
+          whatsapp: data.whatsapp || '',
+          branches 
+        });
       }
-    };
-    fetchContact();
+    }, (error) => {
+      console.error("Error fetching contact data from Firestore:", error);
+    });
+    return () => unsub();
   }, []);
 
   return (

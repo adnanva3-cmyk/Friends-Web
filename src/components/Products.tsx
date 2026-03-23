@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { INITIAL_DATA } from '../constants/initialData';
+import { db } from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 export default function Products() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>(INITIAL_DATA.products);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch('/api/data');
-        if (!res.ok) throw new Error('Server returned ' + res.status);
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Response is not JSON");
-        }
-        const data = await res.json();
-        setProducts(data.products || []);
-      } catch (err) {
-        console.error("Error fetching data:", err);
+    const unsub = onSnapshot(collection(db, 'products'), (snapshot) => {
+      if (!snapshot.empty) {
+        const productsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProducts(productsData);
       }
       setLoading(false);
-    };
-    fetchProducts();
+    }, (error) => {
+      console.error("Error fetching products from Firestore:", error);
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
   if (loading) return <div className="py-20 text-center">Loading Products...</div>;

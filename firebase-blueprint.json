@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "HomeContent": {
+      "title": "HomeContent",
+      "description": "Content for the home page hero section",
+      "type": "object",
+      "properties": {
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroBg": { "type": "string" },
+        "heroGradientStrength": { "type": "number" },
+        "heroImage": { "type": "string" },
+        "heroOpacity": { "type": "number" }
+      }
+    },
+    "ContactInfo": {
+      "title": "ContactInfo",
+      "description": "Contact information and branches",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "secondaryPhone": { "type": "string" },
+        "email": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "address": { "type": "string" },
+              "mapEmbed": { "type": "string" },
+              "mapLink": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A product offering",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "bgImage": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "string" }
+      }
+    },
+    "Slide": {
+      "title": "Slide",
+      "description": "A slide for the home page carousel",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "layout": { "type": "string" },
+        "type": { "type": "string" },
+        "shape": { "type": "string" },
+        "rounded": { "type": "string" },
+        "fit": { "type": "string" },
+        "align": { "type": "string" }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "Admin user profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "settings/home": {
+      "schema": { "$ref": "#/entities/HomeContent" },
+      "description": "Home page settings"
+    },
+    "settings/contact": {
+      "schema": { "$ref": "#/entities/ContactInfo" },
+      "description": "Contact settings"
+    },
+    "products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Products"
+    },
+    "slides/{slideId}": {
+      "schema": { "$ref": "#/entities/Slide" },
+      "description": "Slides"
+    },
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Admin users"
+    }
+  }
+}
