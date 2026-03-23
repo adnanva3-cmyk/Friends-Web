@@ -63,7 +63,7 @@ export default function App() {
               className="cursor-pointer text-left inline-flex flex-col"
               onClick={() => setActiveTab('Home')}
             >
-              <h1 className="font-display font-black text-5xl md:text-7xl leading-[0.8] flex justify-between w-full">
+              <h1 className="font-display font-black text-5xl md:text-7xl leading-[0.8] flex justify-center gap-1 md:gap-2 w-full">
                 <span className="text-[#8B0000]">F</span>
                 <span className="text-[#8B0000]">R</span>
                 <span className="text-[#8B0000]">I</span>
@@ -72,7 +72,7 @@ export default function App() {
                 <span className="text-[#8B0000]">D</span>
                 <span className="text-black">S</span>
               </h1>
-              <div className="mt-1 bg-black text-white px-3 py-1 text-[10px] md:text-[13px] font-black uppercase tracking-[0.2em] text-center whitespace-nowrap">
+              <div className="mt-1 bg-black text-white px-4 py-1.5 text-[11px] md:text-[14px] font-black uppercase tracking-[0.3em] text-center whitespace-nowrap">
                 HOLLOW BRICKS & INTERLOCKS
               </div>
             </motion.div>
