@@ -464,6 +464,19 @@ export default function Admin() {
 
       {/* Content */}
       <div className="bg-white border border-neutral-100 rounded-3xl p-8 shadow-sm">
+        {!allData && !loading && (
+          <div className="text-center py-12 text-neutral-500">
+            <p className="font-bold text-lg mb-2">Failed to load data</p>
+            <p>Please check your connection or try refreshing the page.</p>
+            <button 
+              onClick={fetchData}
+              className="mt-4 px-6 py-2 bg-red-700 text-white rounded-lg font-bold hover:bg-red-800 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {activeSubTab === 'home' && allData && (
           <div className="space-y-6">
             <h3 className="text-xl font-bold mb-4">Hero Section</h3>
