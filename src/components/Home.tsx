@@ -58,13 +58,13 @@ function SlideCard({
   }[rounded as 'none' | 'medium' | 'large' | 'full'] || 'rounded-[2rem]';
 
   const fitClass = fit === 'full' 
-    ? 'w-screen h-screen max-w-none rounded-none border-none shadow-none' 
-    : `w-[85vw] max-w-4xl ${shapeClass} ${roundedClass}`;
+    ? 'w-screen h-[100dvh] max-w-none rounded-none border-none shadow-none' 
+    : `w-[90vw] md:w-[85vw] max-w-4xl ${shapeClass} ${roundedClass}`;
 
   const alignClass = fit === 'full' ? '' : {
     center: 'left-1/2 -translate-x-1/2',
-    left: 'left-8 md:left-20',
-    right: 'right-8 md:right-20'
+    left: 'left-4 md:left-20',
+    right: 'right-4 md:right-20'
   }[align as 'center' | 'left' | 'right'] || 'left-1/2 -translate-x-1/2';
 
   return (
@@ -87,19 +87,19 @@ function SlideCard({
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent flex flex-col justify-end p-10 md:p-16">
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent flex flex-col justify-end p-6 md:p-16">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <span className={`${style.accent} font-display font-bold tracking-widest text-xs uppercase mb-2 block`}>
+              <span className={`${style.accent} font-display font-bold tracking-widest text-[10px] md:text-xs uppercase mb-1 md:mb-2 block`}>
                 {slide.subtitle}
               </span>
-              <h3 className={`${style.text} text-4xl md:text-6xl font-display font-bold tracking-tight leading-none`}>
+              <h3 className={`${style.text} text-3xl md:text-6xl font-display font-bold tracking-tight leading-none`}>
                 {slide.title}
               </h3>
-              <p className="text-neutral-600 mt-4 max-w-md text-lg leading-relaxed font-medium">
+              <p className="text-neutral-600 mt-2 md:mt-4 max-w-md text-sm md:text-lg leading-relaxed font-medium line-clamp-3 md:line-clamp-none">
                 {slide.description}
               </p>
             </motion.div>
@@ -108,8 +108,8 @@ function SlideCard({
       )}
 
       {layout === 'split' && (
-        <div className="flex h-full">
-          <div className="w-1/2 h-full">
+        <div className="flex flex-col md:flex-row h-full">
+          <div className="w-full md:w-1/2 h-1/2 md:h-full">
             <img 
               src={slide.image} 
               alt={slide.title}
@@ -117,19 +117,19 @@ function SlideCard({
               referrerPolicy="no-referrer"
             />
           </div>
-          <div className="w-1/2 h-full flex flex-col justify-center p-10 md:p-16 bg-white">
+          <div className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col justify-center p-6 md:p-16 bg-white">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <span className={`${style.accent} font-display font-bold tracking-widest text-xs uppercase mb-2 block`}>
+              <span className={`${style.accent} font-display font-bold tracking-widest text-[10px] md:text-xs uppercase mb-1 md:mb-2 block`}>
                 {slide.subtitle}
               </span>
-              <h3 className={`${style.text} text-3xl md:text-5xl font-display font-bold tracking-tight leading-tight`}>
+              <h3 className={`${style.text} text-2xl md:text-5xl font-display font-bold tracking-tight leading-tight`}>
                 {slide.title}
               </h3>
-              <p className="text-neutral-500 mt-6 text-base md:text-lg leading-relaxed">
+              <p className="text-neutral-500 mt-2 md:mt-6 text-sm md:text-lg leading-relaxed line-clamp-3 md:line-clamp-none">
                 {slide.description}
               </p>
             </motion.div>
@@ -238,7 +238,7 @@ export default function Home() {
   return (
     <div ref={containerRef} className="relative h-[800vh] bg-white">
       {/* Sticky Hero Section */}
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden">
+      <div className="sticky top-0 h-[100dvh] flex flex-col items-center justify-center overflow-hidden">
         {/* Background Hero Image */}
         {homeContent.heroImage && (
           <motion.div 
@@ -273,12 +273,12 @@ export default function Home() {
             pointerEvents: textPointerEvents,
             visibility: textVisibility
           }}
-          className="text-center z-20 mb-32 px-6"
+          className="text-center z-20 mb-32 px-4 md:px-6"
         >
           <motion.h2 
             initial={{ opacity: 0, letterSpacing: "0.5em" }}
             animate={{ opacity: 1, letterSpacing: "0.3em" }}
-            className="text-neutral-400 uppercase text-xs md:text-sm font-bold mb-6"
+            className="text-neutral-400 uppercase text-[10px] md:text-sm font-bold mb-4 md:mb-6"
           >
             {homeContent.heroSubtitle}
           </motion.h2>
@@ -286,7 +286,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-neutral-900 text-5xl md:text-8xl font-display font-bold max-w-5xl mx-auto leading-[0.9] tracking-tighter"
+            className="text-neutral-900 text-4xl md:text-8xl font-display font-bold max-w-5xl mx-auto leading-[0.9] tracking-tighter"
           >
             {homeContent.heroTitle.split('Last Generations')[0]}
             {homeContent.heroTitle.includes('Last Generations') && <span className="text-red-600">Last Generations</span>}

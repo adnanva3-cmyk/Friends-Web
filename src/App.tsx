@@ -51,15 +51,15 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-100">
         <div className="max-w-7xl mx-auto px-6 py-3">
           {/* Top Row: Logo and Shortcuts */}
-          <div className="flex justify-between items-start mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-start mb-4 gap-4">
             {/* Logo - Top Left */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="cursor-pointer text-left inline-flex flex-col"
+              className="cursor-pointer text-center md:text-left inline-flex flex-col"
               onClick={() => setActiveTab('Home')}
             >
-              <h1 className="font-display font-black text-5xl md:text-7xl leading-[0.8] flex justify-center gap-1 md:gap-2 w-full">
+              <h1 className="font-display font-black text-4xl md:text-7xl leading-[0.8] flex justify-center gap-1 md:gap-2 w-full">
                 <span className="text-[#8B0000]">F</span>
                 <span className="text-[#8B0000]">R</span>
                 <span className="text-[#8B0000]">I</span>
@@ -68,7 +68,7 @@ export default function App() {
                 <span className="text-[#8B0000]">D</span>
                 <span className="text-black">S</span>
               </h1>
-              <div className="mt-1 bg-black text-white px-4 py-1.5 text-[11px] md:text-[14px] font-black uppercase tracking-[0.3em] text-center whitespace-nowrap">
+              <div className="mt-1 bg-black text-white px-2 md:px-4 py-1.5 text-[9px] md:text-[14px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-center whitespace-nowrap">
                 HOLLOW BRICKS & INTERLOCKS
               </div>
             </motion.div>
@@ -77,7 +77,7 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex flex-col items-end gap-2"
+              className="flex flex-row md:flex-col items-center md:items-end gap-2"
             >
               {contactData && (
                 <>
@@ -113,12 +113,12 @@ export default function App() {
 
           {/* Navigation Tabs - Centered at the bottom of header */}
           <nav className="flex justify-center w-full">
-            <div className="flex items-center bg-neutral-100/80 p-1.5 rounded-2xl w-full max-w-2xl shadow-md border border-neutral-200/50">
+            <div className="flex items-center bg-neutral-100/80 p-1 md:p-1.5 rounded-2xl w-full max-w-2xl shadow-md border border-neutral-200/50 overflow-x-auto hide-scrollbar">
               {((isAdminMode ? ['Home', 'Products', 'Contacts Us', 'Admin'] : ['Home', 'Products', 'Contacts Us']) as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative px-6 py-3 text-xs md:text-sm font-bold transition-colors rounded-xl flex-1 ${
+                  className={`relative px-3 md:px-6 py-2 md:py-3 text-[10px] md:text-sm font-bold transition-colors rounded-xl flex-1 whitespace-nowrap ${
                     activeTab === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-800'
                   }`}
                 >
