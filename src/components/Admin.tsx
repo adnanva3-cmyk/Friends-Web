@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Trash2, Plus, Save, LogOut, Settings, Package, Phone, Upload, Loader2 } from 'lucide-react';
 import { INITIAL_DATA } from '../constants/initialData';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -69,22 +68,17 @@ export default function Admin() {
   const categories = allData?.products ? Array.from(new Set(allData.products.map((p: any) => p.category).filter(Boolean))) : ['HOLLOW BRICKS', 'INTERLOCK'];
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsLocalAdmin(true);
-        sessionStorage.setItem('admin_session', 'true');
-        fetchData();
-      } else {
-        setIsLocalAdmin(false);
-        sessionStorage.removeItem('admin_session');
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (isLocalAdmin) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [isLocalAdmin]);
 
   const fetchData = async () => {
     try {
@@ -115,20 +109,17 @@ export default function Admin() {
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in.');
+    if (username === 'admin' && password === 'admin') {
+      setIsLocalAdmin(true);
+      sessionStorage.setItem('admin_session', 'true');
+    } else {
+      setError('Invalid username or password.');
     }
   };
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error("Error signing out:", err);
-    }
+  const logout = () => {
+    setIsLocalAdmin(false);
+    sessionStorage.removeItem('admin_session');
   };
 
   const saveData = async (updatedData: any) => {
@@ -353,26 +344,39 @@ export default function Admin() {
   if (!isLocalAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-neutral-100 shadow-sm text-center">
-          <h2 className="text-2xl font-bold mb-6">Admin Access</h2>
-          <p className="text-neutral-500 mb-8">Sign in with your Google account to manage the website content.</p>
-          
-          {error && <p className="text-red-600 text-sm font-bold mb-4">{error}</p>}
-          
-          <button 
-            onClick={login}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-neutral-200 text-neutral-700 py-4 rounded-xl font-bold hover:bg-neutral-50 transition-all shadow-sm"
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
-                <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
-                <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
-                <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
-                <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
-              </g>
-            </svg>
-            Sign in with Google
-          </button>
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-neutral-100 shadow-sm">
+          <h2 className="text-2xl font-bold mb-6 text-center">Admin Access</h2>
+          <form onSubmit={login} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Username</label>
+              <input 
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                placeholder="Enter username"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Password</label>
+              <input 
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                placeholder="Enter password"
+                required
+              />
+            </div>
+            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+            <button 
+              type="submit"
+              className="w-full bg-red-700 text-white py-4 rounded-xl font-bold hover:bg-red-800 transition-all shadow-lg shadow-red-700/20"
+            >
+              Login
+            </button>
+          </form>
         </div>
       </div>
     );
