@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -9,8 +8,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_FILE = path.join(__dirname, "data.json");
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+const DATA_FILE = path.join("/tmp", "data.json");
+const UPLOADS_DIR = path.join("/tmp", "uploads");
 
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -113,6 +112,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
