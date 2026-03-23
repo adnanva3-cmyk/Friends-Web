@@ -109,7 +109,7 @@ export default function Admin() {
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (username === 'admin' && password === 'admin') {
+    if (username === 'IZA' && password === 'Iza@123') {
       setIsLocalAdmin(true);
       sessionStorage.setItem('admin_session', 'true');
     } else {
