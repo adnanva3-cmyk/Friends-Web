@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Trash2, Plus, Save, LogOut, Settings, Package, Phone, Upload, Loader2 } from 'lucide-react';
 import { INITIAL_DATA } from '../constants/initialData';
 import { db } from '../firebase';
-import { doc, getDoc, getDocs, collection, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 
 const fileToBase64 = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -153,38 +153,6 @@ export default function Admin() {
     sessionStorage.removeItem('admin_session');
   };
 
-  const saveData = async (updatedData: any) => {
-    try {
-      const batch = writeBatch(db);
-      
-      batch.set(doc(db, 'settings', 'home'), updatedData.home);
-      batch.set(doc(db, 'settings', 'contact'), updatedData.contact);
-      
-      const productsSnap = await getDocs(collection(db, 'products'));
-      productsSnap.forEach(doc => batch.delete(doc.ref));
-      
-      updatedData.products.forEach((p: any) => {
-        const docRef = doc(collection(db, 'products'), p.id || Date.now().toString() + Math.random());
-        batch.set(docRef, p);
-      });
-      
-      const slidesSnap = await getDocs(collection(db, 'slides'));
-      slidesSnap.forEach(doc => batch.delete(doc.ref));
-      
-      updatedData.slides.forEach((s: any) => {
-        const docRef = doc(collection(db, 'slides'), s.id || Date.now().toString() + Math.random());
-        batch.set(docRef, s);
-      });
-      
-      await batch.commit();
-      setAllData(updatedData);
-      return true;
-    } catch (err: any) {
-      console.error("Error saving data to Firestore:", err);
-      throw err;
-    }
-  };
-
   const showStatus = (text: string, type: 'success' | 'error' = 'success') => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage(null), 3000);
@@ -200,12 +168,11 @@ export default function Admin() {
         updatedData.home.heroImage = base64Image;
       }
 
-      const success = await saveData(updatedData);
-      if (success) {
-        setHeroFile(null);
-        setHeroPreview('');
-        showStatus('Home content updated!');
-      }
+      await setDoc(doc(db, 'settings', 'home'), updatedData.home);
+      setAllData(updatedData);
+      setHeroFile(null);
+      setHeroPreview('');
+      showStatus('Home content updated!');
     } catch (err) {
       console.error("Error saving home content:", err);
       showStatus("Failed to save home content.", 'error');
@@ -217,8 +184,8 @@ export default function Admin() {
   const saveContact = async () => {
     setUploading(true);
     try {
-      const success = await saveData(allData);
-      if (success) showStatus('Contact info updated!');
+      await setDoc(doc(db, 'settings', 'contact'), allData.contact);
+      showStatus('Contact info updated!');
     } catch (err) {
       console.error("Error saving contact info:", err);
       showStatus("Failed to save contact info.", 'error');
@@ -273,30 +240,33 @@ export default function Admin() {
         imageUrl = await fileToBase64(slideFile);
       }
 
+      const slideId = Date.now().toString();
+      const slideToSave = { ...newSlide, id: slideId, image: imageUrl };
+
+      await setDoc(doc(db, 'slides', slideId), slideToSave);
+
       const updatedSlides = [
         ...(allData.slides || []),
-        { ...newSlide, id: Date.now().toString(), image: imageUrl }
+        slideToSave
       ];
 
-      const success = await saveData({ ...allData, slides: updatedSlides });
+      setAllData({ ...allData, slides: updatedSlides });
 
-      if (success) {
-        setNewSlide({ 
-          title: '', 
-          subtitle: '', 
-          description: '', 
-          image: '', 
-          layout: 'overlay', 
-          type: 'general',
-          shape: 'rectangle',
-          rounded: 'large',
-          fit: 'contained',
-          align: 'center'
-        });
-        setSlideFile(null);
-        setSlidePreview('');
-        showStatus('Slide added successfully!');
-      }
+      setNewSlide({ 
+        title: '', 
+        subtitle: '', 
+        description: '', 
+        image: '', 
+        layout: 'overlay', 
+        type: 'general',
+        shape: 'rectangle',
+        rounded: 'large',
+        fit: 'contained',
+        align: 'center'
+      });
+      setSlideFile(null);
+      setSlidePreview('');
+      showStatus('Slide added successfully!');
     } catch (err: any) {
       console.error("Error adding slide:", err);
       showStatus(`Error: ${err.message || 'Unknown error'}`, 'error');
@@ -309,12 +279,11 @@ export default function Admin() {
     if (deletingId === id) {
       setUploading(true);
       try {
+        await deleteDoc(doc(db, 'slides', id));
         const updatedSlides = (allData.slides || []).filter((s: any) => s.id !== id);
-        const success = await saveData({ ...allData, slides: updatedSlides });
-        if (success) {
-          setDeletingId(null);
-          showStatus('Slide deleted');
-        }
+        setAllData({ ...allData, slides: updatedSlides });
+        setDeletingId(null);
+        showStatus('Slide deleted');
       } catch (err) {
         console.error("Error deleting slide:", err);
         showStatus("Failed to delete slide.", 'error');
@@ -348,21 +317,31 @@ export default function Admin() {
         bgImageUrl = await fileToBase64(bgFile);
       }
 
+      const finalCategory = showNewCategoryInput ? customCategory : newProduct.category;
+      const productId = Date.now().toString();
+      const productToSave = { 
+        ...newProduct, 
+        id: productId, 
+        image: imageUrl, 
+        bgImage: bgImageUrl,
+        category: finalCategory
+      };
+
+      await setDoc(doc(db, 'products', productId), productToSave);
+
       const updatedProducts = [
         ...allData.products,
-        { ...newProduct, id: Date.now().toString(), image: imageUrl, bgImage: bgImageUrl }
+        productToSave
       ];
 
-      const success = await saveData({ ...allData, products: updatedProducts });
+      setAllData({ ...allData, products: updatedProducts });
 
-      if (success) {
-        setNewProduct({ name: '', description: '', image: '', bgImage: '', category: '', price: '' });
-        setProductFile(null);
-        setProductPreview('');
-        setBgFile(null);
-        setBgPreview('');
-        showStatus('Product added successfully!');
-      }
+      setNewProduct({ name: '', description: '', image: '', bgImage: '', category: '', price: '' });
+      setProductFile(null);
+      setProductPreview('');
+      setBgFile(null);
+      setBgPreview('');
+      showStatus('Product added successfully!');
     } catch (err: any) {
       console.error("Error adding product:", err);
       showStatus(`Error: ${err.message || 'Unknown error'}`, 'error');
@@ -375,12 +354,11 @@ export default function Admin() {
     if (deletingId === id) {
       setUploading(true);
       try {
+        await deleteDoc(doc(db, 'products', id));
         const updatedProducts = (allData.products || []).filter((p: any) => p.id !== id);
-        const success = await saveData({ ...allData, products: updatedProducts });
-        if (success) {
-          setDeletingId(null);
-          showStatus('Product deleted');
-        }
+        setAllData({ ...allData, products: updatedProducts });
+        setDeletingId(null);
+        showStatus('Product deleted');
       } catch (err) {
         console.error("Error deleting product:", err);
         showStatus("Failed to delete product.", 'error');
@@ -391,6 +369,69 @@ export default function Admin() {
       setDeletingId(id);
       // Reset after 3 seconds if not confirmed
       setTimeout(() => setDeletingId(prev => prev === id ? null : prev), 3000);
+    }
+  };
+
+  const handleAddMorePhotos = async (productId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const newPhotos = await Promise.all(
+        Array.from(files).map((file: File) => fileToBase64(file, 1200, 1200, 0.7))
+      );
+
+      let updatedProduct = null;
+      const updatedProducts = allData.products.map((p: any) => {
+        if (p.id === productId) {
+          updatedProduct = {
+            ...p,
+            additionalPhotos: [...(p.additionalPhotos || []), ...newPhotos]
+          };
+          return updatedProduct;
+        }
+        return p;
+      });
+
+      if (updatedProduct) {
+        await setDoc(doc(db, 'products', productId), updatedProduct);
+        setAllData({ ...allData, products: updatedProducts });
+        showStatus('Photos added successfully!');
+      }
+    } catch (err: any) {
+      console.error("Error adding photos:", err);
+      showStatus(`Error: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      setUploading(false);
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  const removeAdditionalPhoto = async (productId: string, photoIndex: number) => {
+    setUploading(true);
+    try {
+      let updatedProduct = null;
+      const updatedProducts = allData.products.map((p: any) => {
+        if (p.id === productId) {
+          const newPhotos = [...(p.additionalPhotos || [])];
+          newPhotos.splice(photoIndex, 1);
+          updatedProduct = { ...p, additionalPhotos: newPhotos };
+          return updatedProduct;
+        }
+        return p;
+      });
+
+      if (updatedProduct) {
+        await setDoc(doc(db, 'products', productId), updatedProduct);
+        setAllData({ ...allData, products: updatedProducts });
+        showStatus('Photo removed');
+      }
+    } catch (err: any) {
+      console.error("Error removing photo:", err);
+      showStatus(`Error: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -886,24 +927,58 @@ export default function Admin() {
               <h3 className="text-xl font-bold">Current Products</h3>
               <div className="grid grid-cols-1 gap-4">
                 {(allData.products || []).map((p: any) => (
-                  <div key={p.id} className="flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-2xl">
-                    <div className="flex items-center gap-4">
-                      <img src={p.image} className="w-16 h-16 object-cover rounded-lg" alt="" />
-                      <div>
-                        <h4 className="font-bold">{p.name}</h4>
-                        <p className="text-xs text-neutral-500">{p.category}</p>
+                  <div key={p.id} className="flex flex-col p-4 bg-white border border-neutral-100 rounded-2xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <img src={p.image} className="w-16 h-16 object-cover rounded-lg" alt="" />
+                        <div>
+                          <h4 className="font-bold">{p.name}</h4>
+                          <p className="text-xs text-neutral-500">{p.category}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer flex items-center gap-2 bg-neutral-100 text-neutral-600 px-4 py-2 rounded-xl font-bold hover:bg-neutral-200 transition-all">
+                          <Upload size={16} />
+                          <span className="text-sm">Add Photos</span>
+                          <input 
+                            type="file" 
+                            multiple 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleAddMorePhotos(p.id, e)}
+                          />
+                        </label>
+                        <button 
+                          onClick={() => deleteProduct(p.id)}
+                          className={`flex items-center gap-2 transition-all px-4 py-2 rounded-xl font-bold ${deletingId === p.id ? 'bg-red-600 text-white' : 'text-neutral-300 hover:text-red-600'}`}
+                        >
+                          {deletingId === p.id ? (
+                            <>Confirm Delete?</>
+                          ) : (
+                            <Trash2 size={20} />
+                          )}
+                        </button>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => deleteProduct(p.id)}
-                      className={`flex items-center gap-2 transition-all px-4 py-2 rounded-xl font-bold ${deletingId === p.id ? 'bg-red-600 text-white' : 'text-neutral-300 hover:text-red-600'}`}
-                    >
-                      {deletingId === p.id ? (
-                        <>Confirm Delete?</>
-                      ) : (
-                        <Trash2 size={20} />
-                      )}
-                    </button>
+                    
+                    {p.additionalPhotos && p.additionalPhotos.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-neutral-100">
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Additional Photos</p>
+                        <div className="flex flex-wrap gap-3">
+                          {p.additionalPhotos.map((photo: string, idx: number) => (
+                            <div key={idx} className="relative group">
+                              <img src={photo} className="w-16 h-16 object-cover rounded-lg" alt="" />
+                              <button 
+                                onClick={() => removeAdditionalPhoto(p.id, idx)}
+                                className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -949,6 +1024,15 @@ export default function Admin() {
                   value={allData.contact.whatsapp}
                   onChange={e => setAllData({...allData, contact: {...allData.contact, whatsapp: e.target.value}})}
                   className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-500 outline-none"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-neutral-500 mb-2 uppercase tracking-wider">Footer Text</label>
+                <textarea 
+                  value={allData.contact.footerText || ''}
+                  onChange={e => setAllData({...allData, contact: {...allData.contact, footerText: e.target.value}})}
+                  placeholder="Leading manufacturer of high-quality hollow bricks and interlocking pavers since 1995."
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-red-500 outline-none h-24"
                 />
               </div>
             </div>

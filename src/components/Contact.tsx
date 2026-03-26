@@ -7,6 +7,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 export default function Contact() {
   const [contactInfo, setContactInfo] = useState(INITIAL_DATA.contact);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'contact'), (docSnap) => {
@@ -25,12 +26,28 @@ export default function Contact() {
           whatsapp: data.whatsapp || '',
           branches 
         });
+      } else {
+        setContactInfo(INITIAL_DATA.contact);
       }
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching contact data from Firestore:", error);
+      setLoading(false);
     });
+
     return () => unsub();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white pt-32 pb-20 flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
+          <div className="text-neutral-400 font-bold tracking-widest text-sm uppercase">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white pt-24 pb-20">

@@ -20,16 +20,23 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Home');
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [contactData, setContactData] = useState<any>(INITIAL_DATA.contact);
+  const [contactData, setContactData] = useState<any>(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'contact'), (docSnap) => {
       if (docSnap.exists()) {
         setContactData(docSnap.data());
+      } else {
+        setContactData(INITIAL_DATA.contact);
       }
     }, (error) => {
       console.error("Error fetching contact data from Firestore:", error);
     });
+
     return () => unsub();
   }, []);
 
@@ -77,7 +84,7 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex flex-row md:flex-col items-center md:items-end gap-2"
+              className="flex flex-wrap justify-center md:flex-col items-center md:items-end gap-2"
             >
               {contactData && (
                 <>
@@ -157,34 +164,13 @@ export default function App() {
 
       {/* Footer */}
       <footer className="py-12 px-6 bg-neutral-50 text-neutral-900 border-t border-neutral-100">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div>
-            <h3 className="text-xl font-display font-bold mb-4">
-              <span className="text-red-600">FRIEND</span>S
-            </h3>
-            <p className="text-neutral-500 text-sm">
-              Leading manufacturer of high-quality hollow bricks and interlocking pavers since 1995.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4 uppercase tracking-widest text-sm text-red-600">Quick Links</h4>
-            <ul className="space-y-2 text-neutral-500">
-              <li><button onClick={() => setActiveTab('Home')} className="hover:text-red-600 transition-colors">Home</button></li>
-              <li><button onClick={() => setActiveTab('Products')} className="hover:text-red-600 transition-colors">Products</button></li>
-              <li><button onClick={() => setActiveTab('Contacts Us')} className="hover:text-red-600 transition-colors">Contacts Us</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4 uppercase tracking-widest text-sm text-red-600">Newsletter</h4>
-            <div className="flex gap-2">
-              <input 
-                type="email" 
-                placeholder="Your email" 
-                className="bg-white border border-neutral-200 rounded-lg px-4 py-2 flex-grow focus:ring-1 focus:ring-red-500 outline-none"
-              />
-              <button className="bg-red-700 px-4 py-2 rounded-lg font-bold text-white hover:bg-red-800 transition-colors">Join</button>
-            </div>
-          </div>
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+          <h3 className="text-xl font-display font-bold mb-4">
+            <span className="text-red-600">FRIEND</span>S
+          </h3>
+          <p className="text-neutral-500 text-sm max-w-md">
+            {contactData?.footerText || "Leading manufacturer of high-quality hollow bricks and interlocking pavers since 1995."}
+          </p>
         </div>
         <div 
           className="max-w-7xl mx-auto mt-12 pt-8 border-t border-neutral-200 text-center text-neutral-400 text-sm cursor-default select-none"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, MotionValue, useMotionValue } from 'motion/react';
+import { motion, useScroll, useTransform, MotionValue, useSpring, useMotionValue } from 'motion/react';
 import { useRef } from 'react';
 import { INITIAL_DATA } from '../constants/initialData';
 import { db } from '../firebase';
@@ -19,17 +19,37 @@ function SlideCard({
   total, 
   scrollYProgress 
 }: SlideCardProps) {
-  const start = index / total;
-  const end = (index + 1) / total;
-  const mid1 = start + (end - start) * 0.2;
-  const mid2 = start + (end - start) * 0.8;
-  const range4 = [start, mid1, mid2, end];
+  const [isMobile, setIsMobile] = useState(false);
 
-  const z = useTransform(scrollYProgress, [start, end], [600, -1200]);
-  const opacity = useTransform(scrollYProgress, range4, [0, 1, 0.8, 0]);
-  const scale = useTransform(scrollYProgress, range4, [0.4, 1.2, 1, 0.6]);
-  const rotateX = useTransform(scrollYProgress, range4, [60, 0, -20, -40]);
-  const y = useTransform(scrollYProgress, range4, [100, 0, -100, -200]);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const heroEnd = 1 / (total + 1);
+  
+  // Map the scroll progress from the end of the hero section to the bottom of the page
+  // into a continuous "progress" value from -1 to (total - 1).
+  // -1 means the first slide is just starting to come into view.
+  // (total - 1) means the last slide is perfectly centered.
+  const progress = useTransform(scrollYProgress, [heroEnd, 1], [-1, total - 1 || 0]);
+  
+  // Calculate the relative distance of THIS specific slide from the center (0).
+  // -1 = incoming from bottom, 0 = centered, 1 = outgoing to top.
+  const distance = useTransform(progress, (p) => p - index);
+
+  // Map the relative distance to visual properties.
+  // By using a continuous [-1, 0, 1] mapping without a flat center, 
+  // the slides will never "stop" or pause. They will continuously flow through the center.
+  // We tighten the opacity range to [-0.8, 0.8] so they fade out completely before overlapping too much.
+  const opacity = useTransform(distance, [-0.8, -0.2, 0.2, 0.8], [0, 1, 1, 0]);
+  const scale = useTransform(distance, [-1, 0, 1], [0.8, 1, 0.8]);
+  // Increased the Y distance on mobile from 200 to 400 to physically push the cards further apart
+  const y = useTransform(distance, [-1, 0, 1], [isMobile ? 400 : 500, 0, isMobile ? -400 : -500]);
+  const rotateX = useTransform(distance, [-1, 0, 1], [20, 0, -20]);
+  const z = useTransform(distance, [-1, 0, 1], [-400, 0, -400]);
 
   const layout = slide.layout || 'overlay';
   const type = slide.type || 'general';
@@ -49,7 +69,7 @@ function SlideCard({
   const style = typeConfig[type] || typeConfig.general;
 
   // Layout classes
-  const shapeClass = shape === 'square' ? 'aspect-square' : 'aspect-video';
+  const shapeClass = shape === 'square' ? 'aspect-square' : (isMobile ? 'aspect-[4/5]' : 'aspect-video');
   const roundedClass = {
     none: 'rounded-none',
     medium: 'rounded-2xl',
@@ -62,24 +82,26 @@ function SlideCard({
     : `w-[90vw] md:w-[85vw] max-w-4xl ${shapeClass} ${roundedClass}`;
 
   const alignClass = fit === 'full' ? '' : {
-    center: 'left-1/2 -translate-x-1/2',
-    left: 'left-4 md:left-20',
-    right: 'right-4 md:right-20'
-  }[align as 'center' | 'left' | 'right'] || 'left-1/2 -translate-x-1/2';
+    center: 'justify-center',
+    left: 'justify-start pl-4 md:pl-20',
+    right: 'justify-end pr-4 md:pr-20'
+  }[align as 'center' | 'left' | 'right'] || 'justify-center';
 
   return (
-    <motion.div
-      style={{
-        z,
-        opacity,
-        scale,
-        rotateX,
-        y,
-        position: 'absolute',
-      }}
-      className={`${fitClass} ${alignClass} overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-neutral-200 ${style.bg}`}
-    >
-      {layout === 'overlay' && (
+    <div className={`absolute inset-0 w-full h-full flex items-center ${alignClass} pointer-events-none z-10`} style={{ transformStyle: 'preserve-3d' }}>
+      <motion.div
+        style={{
+          opacity,
+          scale,
+          y,
+          rotateX,
+          z,
+          transformOrigin: 'center center',
+          willChange: 'transform, opacity',
+        }}
+        className={`${fitClass} relative overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] border border-neutral-200 ${style.bg} pointer-events-auto`}
+      >
+        {layout === 'overlay' && (
         <>
           <img 
             src={slide.image} 
@@ -171,17 +193,23 @@ function SlideCard({
         0{index + 1}
       </div>
     </motion.div>
+    </div>
   );
 }
 
-export default function Home() {
+function HomeContent({ homeContent, slides }: { homeContent: any, slides: any[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
+  const { scrollYProgress: rawScrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   });
 
-  const [homeContent, setHomeContent] = useState(INITIAL_DATA.home);
+  const scrollYProgress = useSpring(rawScrollYProgress, {
+    stiffness: 40,
+    damping: 15,
+    mass: 0.8,
+    restDelta: 0.0001
+  });
 
   // Dynamic Opacity Hook
   const opacitySetting = useMotionValue(INITIAL_DATA.home.heroOpacity);
@@ -189,54 +217,30 @@ export default function Home() {
     opacitySetting.set(homeContent.heroOpacity ?? 0.4);
   }, [homeContent.heroOpacity]);
 
+  const heroEnd = 1 / (slides.length + 1);
+
   // Hooks for Hero Image
-  const heroFade = useTransform(scrollYProgress, [0, 0.04], [1, 0]);
+  const heroFade = useTransform(rawScrollYProgress, [0, heroEnd], [1, 0]);
   const heroOpacity = useTransform([heroFade, opacitySetting], ([f, o]) => (f as number) * (o as number));
-  const heroScale = useTransform(scrollYProgress, [0, 0.04], [1, 1.1]);
+  const heroScale = useTransform(rawScrollYProgress, [0, heroEnd], [1, 1.1]);
 
   // Hooks for Ambient Light
-  const ambientOpacity = useTransform(scrollYProgress, [0, 0.04], [1, 0]);
+  const ambientOpacity = useTransform(rawScrollYProgress, [0, heroEnd], [1, 0]);
 
   // Hooks for Hero Text
-  const textOpacity = useTransform(scrollYProgress, [0, 0.04], [1, 0]);
-  const textY = useTransform(scrollYProgress, [0, 0.04], [0, -50]);
-  const textScale = useTransform(scrollYProgress, [0, 0.04], [1, 0.95]);
-  const textPointerEvents = useTransform(scrollYProgress, [0, 0.04], ["auto" as any, "none" as any]);
-  const textVisibility = useTransform(scrollYProgress, [0, 0.04], ["visible" as any, "hidden" as any]);
+  const textOpacity = useTransform(rawScrollYProgress, [0, heroEnd], [1, 0]);
+  const textY = useTransform(rawScrollYProgress, [0, heroEnd], [0, -300]);
+  const textScale = useTransform(rawScrollYProgress, [0, heroEnd], [1, 0.95]);
+  const textPointerEvents = useTransform(rawScrollYProgress, [0, heroEnd], ["auto" as any, "none" as any]);
+  const textVisibility = useTransform(rawScrollYProgress, [0, heroEnd], ["visible" as any, "hidden" as any]);
 
   // Hooks for Scroll Indicator
-  const indicatorOpacity = useTransform(scrollYProgress, [0, 0.04], [1, 0]);
-  const indicatorPointerEvents = useTransform(scrollYProgress, [0, 0.04], ["auto" as any, "none" as any]);
-  const indicatorVisibility = useTransform(scrollYProgress, [0, 0.04], ["visible" as any, "hidden" as any]);
-
-  const [slides, setSlides] = useState<any[]>(INITIAL_DATA.slides);
-
-  useEffect(() => {
-    const unsubHome = onSnapshot(doc(db, 'settings', 'home'), (docSnap) => {
-      if (docSnap.exists()) {
-        setHomeContent(docSnap.data() as any);
-      }
-    }, (error) => {
-      console.error("Error fetching home data from Firestore:", error);
-    });
-
-    const unsubSlides = onSnapshot(collection(db, 'slides'), (snapshot) => {
-      if (!snapshot.empty) {
-        const slidesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setSlides(slidesData);
-      }
-    }, (error) => {
-      console.error("Error fetching slides from Firestore:", error);
-    });
-
-    return () => {
-      unsubHome();
-      unsubSlides();
-    };
-  }, []);
+  const indicatorOpacity = useTransform(rawScrollYProgress, [0, heroEnd], [1, 0]);
+  const indicatorPointerEvents = useTransform(rawScrollYProgress, [0, heroEnd], ["auto" as any, "none" as any]);
+  const indicatorVisibility = useTransform(rawScrollYProgress, [0, heroEnd], ["visible" as any, "hidden" as any]);
 
   return (
-    <div ref={containerRef} className="relative h-[800vh] bg-white">
+    <div ref={containerRef} style={{ height: `${(slides.length + 1) * 100}vh` }} className="relative bg-white">
       {/* Sticky Hero Section */}
       <div className="sticky top-0 h-[100dvh] flex flex-col items-center justify-center overflow-hidden">
         {/* Background Hero Image */}
@@ -294,7 +298,10 @@ export default function Home() {
         </motion.div>
 
         {/* 3D Scrolling Gallery */}
-        <div className="absolute inset-0 flex items-center justify-center perspective-1000 overflow-visible">
+        <div 
+          className="absolute inset-0 flex items-center justify-center overflow-visible"
+          style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
+        >
           {slides.map((slide, index) => (
             <SlideCard 
               key={slide.id} 
@@ -323,4 +330,66 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+export default function Home() {
+  const [homeContent, setHomeContent] = useState(INITIAL_DATA.home);
+  const [slides, setSlides] = useState<any[]>(INITIAL_DATA.slides);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let homeLoaded = false;
+    let slidesLoaded = false;
+
+    const checkLoading = () => {
+      if (homeLoaded && slidesLoaded) setLoading(false);
+    };
+
+    const unsubHome = onSnapshot(doc(db, 'settings', 'home'), (docSnap) => {
+      if (docSnap.exists()) {
+        setHomeContent(docSnap.data() as any);
+      } else {
+        setHomeContent(INITIAL_DATA.home);
+      }
+      homeLoaded = true;
+      checkLoading();
+    }, (error) => {
+      console.error("Error fetching home data from Firestore:", error);
+      homeLoaded = true;
+      checkLoading();
+    });
+
+    const unsubSlides = onSnapshot(collection(db, 'slides'), (snapshot) => {
+      if (!snapshot.empty) {
+        const slidesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSlides(slidesData);
+      } else {
+        setSlides(INITIAL_DATA.slides);
+      }
+      slidesLoaded = true;
+      checkLoading();
+    }, (error) => {
+      console.error("Error fetching slides from Firestore:", error);
+      slidesLoaded = true;
+      checkLoading();
+    });
+
+    return () => {
+      unsubHome();
+      unsubSlides();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
+          <div className="text-neutral-400 font-bold tracking-widest text-sm uppercase">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return <HomeContent homeContent={homeContent} slides={slides} />;
 }
